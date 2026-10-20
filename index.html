@@ -1,1 +1,615 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
 
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>IR Spectroscopy Master</title>
+    <link href="https://fonts.googleapis.com/css2?family=Almarai:wght@400;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <style>
+        :root {
+            --bg-color: #F4F7F6;
+            --btn-green: #2ecc71;
+            --btn-green-dark: #27ae60;
+            --btn-blue: #3498db;
+            --btn-blue-dark: #2980b9;
+            --btn-purple: #9b59b6;
+            --btn-purple-dark: #8e44ad;
+            --correct-bg: #e8f8f5;
+            --correct-border: #27ae60;
+            --wrong-bg: #fdedec;
+            --wrong-border: #c0392b;
+            --progress-yellow: #f1c40f;
+            --grey-border: #bdc3c7;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: 'Almarai', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--bg-color);
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+        }
+
+        .screen {
+            display: none;
+            width: 100%;
+            height: 100%;
+            padding: 20px 20px 100px 20px;
+            flex-direction: column;
+            align-items: center;
+            position: absolute;
+            top: 0;
+            left: 0;
+            overflow-y: auto;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        #home-screen {
+            justify-content: center;
+        }
+
+        .title {
+            color: #2c3e50;
+            font-size: 32px;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #7f8c8d;
+            font-size: 16px;
+            text-align: center;
+            margin-bottom: 30px;
+            font-weight: 700;
+        }
+
+        .btn-main {
+            width: 90%;
+            max-width: 400px;
+            color: white;
+            padding: 18px;
+            margin: 10px 0;
+            border-radius: 20px;
+            border: none;
+            font-size: 20px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.1s;
+        }
+
+        .btn-quiz { background-color: var(--btn-green); box-shadow: 0 6px 0 var(--btn-green-dark); }
+        .btn-review { background-color: var(--btn-purple); box-shadow: 0 6px 0 var(--btn-purple-dark); }
+        .btn-main:active { transform: translateY(6px); box-shadow: 0 0px 0 transparent; }
+
+        /* Review Screen Styles */
+        .review-content {
+            width: 100%;
+            max-width: 800px;
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            border: 2px solid var(--grey-border);
+            line-height: 1.8;
+            font-size: 16px;
+        }
+        .review-content h3 { color: var(--btn-purple-dark); border-bottom: 2px solid #eee; padding-bottom: 5px; }
+        .review-content ul { padding-right: 20px; }
+        .review-content li { margin-bottom: 10px; }
+        .highlight { background-color: #fff3cd; padding: 0 5px; border-radius: 3px; font-weight: bold;}
+
+        /* Quiz Header */
+        .quiz-header {
+            width: 100%; max-width: 800px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;
+        }
+        .progress-bar-bg { flex-grow: 1; height: 15px; background: #e0e0e0; border-radius: 10px; margin: 0 15px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; background: var(--progress-yellow); width: 0%; transition: width 0.3s ease; }
+        .close-btn { color: #e74c3c; font-size: 28px; font-weight: bold; cursor: pointer; }
+        #round-info { color: var(--btn-blue-dark); font-weight: 800; font-size: 18px; margin-bottom: 15px; }
+
+        /* Question Box & Options */
+        .question-box {
+            width: 100%; max-width: 800px; padding: 15px; font-size: 18px; font-weight: 800;
+            background: white; border: 3px solid var(--grey-border); border-radius: 15px; margin-bottom: 20px; direction: ltr; text-align: left;
+        }
+        .options-container { width: 100%; max-width: 800px; display: grid; grid-template-columns: 1fr; gap: 12px; }
+        @media (min-width: 600px) { .options-container { grid-template-columns: 1fr 1fr; } }
+        .option-btn {
+            border: 3px solid var(--grey-border); border-radius: 12px; padding: 12px; font-size: 16px; font-weight: 700;
+            background: white; box-shadow: 0 4px 0 var(--grey-border); cursor: pointer; direction: ltr; text-align: left;
+        }
+        .option-btn.active-click:active { transform: translateY(4px); box-shadow: 0 0px 0 transparent; }
+        .option-btn.correct { background: var(--correct-bg); border-color: var(--correct-border); color: var(--correct-border); box-shadow: 0 4px 0 var(--correct-border); pointer-events: none; }
+        .option-btn.wrong { background: var(--wrong-bg); border-color: var(--wrong-border); color: var(--wrong-border); box-shadow: 0 4px 0 var(--wrong-border); pointer-events: none; }
+        .option-btn.locked { pointer-events: none; }
+
+        /* Explanation Box */
+        .explanation-box {
+            display: none; width: 100%; max-width: 800px; margin-top: 20px; padding: 15px;
+            background: #eaf2f8; border: 3px solid #5dade2; border-radius: 12px; direction: rtl;
+        }
+        .explanation-title { font-weight: 800; color: #2874a6; margin-bottom: 5px; }
+
+        /* Mini Chart CSS (The Magic) */
+        .ir-chart {
+            width: 100%; height: 140px; border: 2px solid #34495e; border-top: none; position: relative; margin-top: 15px; background: #fafafa; border-radius: 0 0 10px 10px;
+        }
+        .ir-axis {
+            position: absolute; top: -25px; width: 100%; display: flex; justify-content: space-between; font-size: 12px; font-weight: bold; border-bottom: 2px solid #34495e; padding-bottom: 5px;
+        }
+        .ir-baseline { position: absolute; top: 10px; width: 100%; border-top: 2px dashed #95a5a6; }
+        .peak {
+            position: absolute; top: 10px; background: rgba(41, 128, 185, 0.7); 
+            border: 2px solid #2980b9; border-top: none;
+            border-radius: 0 0 50% 50%; /* Makes it look like a dip */
+        }
+        .peak.sharp { width: 4%; height: 80%; margin-left: -2%; }
+        .peak.broad { width: 15%; height: 60%; margin-left: -7.5%; border-radius: 0 0 40% 40%; background: rgba(142, 68, 173, 0.5); border-color: #8e44ad; }
+        .peak.medium { width: 8%; height: 50%; margin-left: -4%; }
+
+        /* Footer Nav */
+        .footer {
+            position: fixed; bottom: 0; left: 0; width: 100%; padding: 15px; background: white;
+            display: flex; justify-content: center; gap: 15px; box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        }
+        .nav-btn { flex: 1; max-width: 390px; color: white; padding: 15px; border-radius: 12px; border: none; font-size: 18px; font-weight: 800; cursor: pointer; }
+        .nav-btn.next { background: var(--btn-green); box-shadow: 0 5px 0 var(--btn-green-dark); }
+        .nav-btn.prev { background: var(--btn-blue); box-shadow: 0 5px 0 var(--btn-blue-dark); }
+        .nav-btn:disabled { background: #bdc3c7; box-shadow: 0 5px 0 #95a5a6; cursor: not-allowed; }
+
+        /* Win Overlay */
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; z-index: 200; justify-content: center; align-items: center; }
+        .dialog { width: 90%; max-width: 400px; background: white; border-radius: 20px; padding: 30px; text-align: center; }
+    </style>
+</head>
+
+<body>
+
+    <!-- Home Screen -->
+    <div id="home-screen" class="screen active">
+        <h1 class="title">IR Spectroscopy<br>Master 📊</h1>
+        <p class="subtitle">التدريب الشامل على قراءة الشارتات وحل الكويز</p>
+        
+        <button class="btn-main btn-review" onclick="openScreen('review-screen')">📖 الزيتونة (مراجعة سريعة)</button>
+        <button class="btn-main btn-quiz" onclick="initQuiz()">🚀 ابدأ الأسئلة (30 سؤال)</button>
+    </div>
+
+    <!-- Review Screen -->
+    <div id="review-screen" class="screen">
+        <div class="quiz-header">
+            <span class="close-btn" onclick="openScreen('home-screen')">✕</span>
+            <h2 style="margin:0; color:#8e44ad;">مراجعة الزيتونة</h2>
+            <div style="width:28px;"></div>
+        </div>
+        <div class="review-content">
+            <h3>1. متى يظهر المركب (IR Active)؟</h3>
+            <p>لازم يحصل تغير في <b>عزم الازدواج (Dipole Moment)</b>. الجزيئات المتماثلة جداً زي <span class="highlight">O2, N2, H2</span> والألكاينات المتماثلة مش بتظهر في الجهاز!</p>
+            
+            <h3>2. قانون هوك (التردد K & m)</h3>
+            <ul>
+                <li><b>كلما زادت قوة الرابطة زاد التردد:</b> Triple (2150) > Double (1650) > Single (1200).</li>
+                <li><b>كلما خفّ وزن الذرة زاد التردد:</b> الـ H أخف حاجة فتظهر عند (3000).</li>
+                <li><b>ترتيب الهالوجينات:</b> C-F > C-Cl > C-Br > C-I.</li>
+            </ul>
+
+            <h3>3. عيلة الكربونيل C=O (الطبيعي 1715)</h3>
+            <ul>
+                <li><b>السالبية الكهربية:</b> تسحب وتصغر الرابطة فـ <b>يزيد</b> التردد (زي Acid halide 1800).</li>
+                <li><b>الرنين (Conjugation):</b> يطول الرابطة فـ <b>يقلل</b> التردد (زي aromatic ketone 1690).</li>
+                <li><b>الروابط الهيدروجينية:</b> تضعف الكربونيل فـ <b>يقلل</b> التردد (زي الأميد 1650).</li>
+                <li><b>ضغط الحلقة:</b> كلما صغرت الحلقة <b>يزيد</b> التردد (الخماسية أعلى من السداسية).</li>
+            </ul>
+
+            <h3>4. أماكن C-H المميزة</h3>
+            <ul>
+                <li><b>sp (Alkyne):</b> حادة جداً عند 3300.</li>
+                <li><b>sp2 (Alkene/Aromatic):</b> أعلى من 3000 بشوية (3000-3200).</li>
+                <li><b>sp3 (Alkane):</b> تحت 3000 بشوية (2800-3000).</li>
+            </ul>
+
+            <h3>5. الروابط الهيدروجينية (OH & NH)</h3>
+            <ul>
+                <li><b>الكحول/الفينول (OH):</b> قمة عريضة ناعمة (Broad) من 3200-3500.</li>
+                <li><b>الحمض (COOH):</b> بطن حامل! عريضة جدااااً من 2500-3200 بتغطي الـ CH + لازم تلاقي C=O عند 1710.</li>
+                <li><b>التخفيف (Dilution):</b> يكسر الروابط <b>الخارجية (Inter)</b> فترجع القمة حادة، لكن <b>الداخلية (Intra)</b> لا تتأثر.</li>
+                <li><b>الأمين (NH2):</b> الأولي له "قرنين" عند 3400، والثانوي له "قرن واحد"، والثالثي لا يظهر!</li>
+            </ul>
+
+            <h3>6. البصمات الخاصة</h3>
+            <ul>
+                <li><b>النيترو NO2:</b> قمتين طوال زي السيف عند 1550 و 1350.</li>
+                <li><b>Nitrile C≡N:</b> قمة قوية عند 2250.</li>
+                <li><b>Trans vs Cis:</b> الـ Trans أعلى (960) من الـ Cis (690).</li>
+                <li><b>Para:</b> أعلى من 800 في حلقة البنزين.</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Quiz Screen -->
+    <div id="quiz-screen" class="screen">
+        <div class="quiz-header">
+            <span class="close-btn" onclick="openScreen('home-screen')">✕</span>
+            <div class="progress-bar-bg"><div id="bar" class="progress-bar-fill"></div></div>
+            <div id="counter" style="font-weight: 800; min-width: 60px; direction: ltr; text-align: center;">0/0</div>
+        </div>
+
+        <div id="round-info">الجولة (1)</div>
+
+        <div class="question-box" id="q-txt"></div>
+        <div id="chart-area"></div> <!-- Area for dynamic mini-charts -->
+
+        <div class="options-container" id="opt-box"></div>
+
+        <div class="explanation-box" id="exp-box">
+            <div class="explanation-title">💡 مفتاح الحل:</div>
+            <div id="exp-txt" style="line-height: 1.6;"></div>
+        </div>
+
+        <div style="margin-bottom: 80px;"></div>
+
+        <div class="footer">
+            <button id="next-btn" class="nav-btn next" onclick="goNext()">تحقق / التالي</button>
+        </div>
+    </div>
+
+    <!-- Win Overlay -->
+    <div id="win-overlay" class="overlay">
+        <div class="dialog">
+            <h1 style="color: var(--btn-green); font-size: 38px; margin: 0 0 15px 0;">بطل الأورجانيك! 🎉</h1>
+            <p style="font-size: 18px; font-weight: 800; color: #333; margin-bottom: 30px;">لقد أنهيت جميع الأسئلة وفهمت كل التريكات بنجاح.</p>
+            <button class="btn-main btn-quiz" style="width: 100%;" onclick="location.reload()">العودة للرئيسية</button>
+        </div>
+    </div>
+
+    <script>
+        // === Question Bank (30 Questions - Dr. Style) ===
+        const allQuestions = [
+            // --- Part 1: Basics & Hooke's Law ---
+            {
+                q: "Which of the following molecules is IR INACTIVE?",
+                opts: ["HCl", "H2O", "N2", "CH3-CH3"],
+                correct: 2,
+                exp: "المركبات المتماثلة جداً مثل N2, O2, H2 لا يحدث لها تغير في عزم الازدواج (Dipole Moment) أثناء الاهتزاز، لذا لا تظهر في جهاز الـ IR."
+            },
+            {
+                q: "The usable IR region for structure elucidation is:",
+                opts: ["400 - 800 nm", "12800 - 4000 cm-1", "4000 - 666 cm-1", "200 - 10 cm-1"],
+                correct: 2,
+                exp: "منطقة הـ Usable Middle IR التي نقرأ منها الشارت تبدأ من 4000 وتنتهي عند 666 cm-1 (أو 2.5 إلى 15 ميكرومتر)."
+            },
+            {
+                q: "According to Hooke's Law, which bond has the HIGHEST stretching frequency?",
+                opts: ["C-O", "C-Cl", "C-H", "C-C"],
+                correct: 2,
+                exp: "التردد يتناسب عكسياً مع كتلة الذرات. الهيدروجين هو أخف ذرة، لذا رابطة C-H تهتز بأسرع تردد (حوالي 3000)."
+            },
+            {
+                q: "Which sequence correctly represents the increasing order of frequency based on halogen mass?",
+                opts: ["C-I < C-Br < C-Cl < C-F", "C-F < C-Cl < C-Br < C-I", "C-Cl < C-F < C-I < C-Br", "C-Br < C-I < C-F < C-Cl"],
+                correct: 0,
+                exp: "كلما خفت الذرة، زاد التردد. الفلور (F) أخف من الكلور والبروم واليود، لذا C-F هو الأعلى في التردد."
+            },
+            {
+                q: "Which sequence correctly represents the stretching frequency based on bond strength?",
+                opts: ["C-C > C=C > C≡C", "C≡C > C=C > C-C", "C=C > C≡C > C-C", "C-C > C≡C > C=C"],
+                correct: 1,
+                exp: "كلما زادت قوة الرابطة (K) زاد التردد. الرابطة الثلاثية أقوى من الثنائية والأحادية. (2150 > 1650 > 1200)."
+            },
+            
+            // --- Part 2: Functional Groups (Text) ---
+            {
+                q: "A broad and intense band in the region of 3200-3500 cm-1 usually indicates:",
+                opts: ["sp C-H stretch", "O-H stretch (H-bonded)", "C=O stretch", "C≡N stretch"],
+                correct: 1,
+                exp: "الرابطة الهيدروجينية تضعف رابطة O-H الأساسية، فتجعل التردد يقل وتصبح القمة عريضة (Broad) في منطقة 3200-3500."
+            },
+            {
+                q: "How can you distinguish a Primary amine (1ry) from a Secondary amine (2ry) in IR?",
+                opts: ["1ry shows 2 sharp peaks at 3300-3500, 2ry shows 1 peak.", "1ry shows 1 peak, 2ry shows 2 peaks.", "1ry doesn't absorb, 2ry shows 1 peak.", "Both show the exact same broad peak."],
+                correct: 0,
+                exp: "الأمين الأولي (NH2) لديه ذرتين هيدروجين يهتزان بطريقتين (Symmetric & Asymmetric) فيعطي قمتين 'قرنين'. الثانوي (NH) يعطي قمة واحدة."
+            },
+            {
+                q: "A compound shows a VERY BROAD peak from 2500 to 3200 cm-1 and a strong peak at 1710 cm-1. What is it?",
+                opts: ["Alcohol", "Ester", "Carboxylic Acid", "Ketone"],
+                correct: 2,
+                exp: "هذه بصمة الحمض الكربوكسيلي! الـ OH بتاعته بتعمل Dimer فبتكون 'بطن حامل' تغطي من 2500 لـ 3200، بالإضافة للـ C=O عند 1710."
+            },
+            {
+                q: "Where does the Nitrile group (C≡N) typically absorb?",
+                opts: ["1715 cm-1", "2240-2280 cm-1", "3300 cm-1", "1550 cm-1"],
+                correct: 1,
+                exp: "الروابط الثلاثية تظهر في المنطقة الفارغة فوق الـ 2000. الـ Nitrile مميز جداً بقوة امتصاصه عند 2240-2280."
+            },
+            {
+                q: "Which group produces TWO strong bands at approximately 1550 and 1350 cm-1?",
+                opts: ["Carboxylic acid", "Anhydride", "Nitro group (-NO2)", "Primary amine"],
+                correct: 2,
+                exp: "مجموعة النيترو (NO2) مميزة جداً بظهور 'سيفين' أو قمتين قويتين عند 1550 و 1350 بسبب الاهتزاز المتماثل وغير المتماثل."
+            },
+            {
+                q: "What is the typical absorption frequency for a NORMAL (aliphatic) Ketone C=O?",
+                opts: ["1715 cm-1", "1690 cm-1", "1750 cm-1", "1800 cm-1"],
+                correct: 0,
+                exp: "الرقم القياسي للـ C=O في الكيتون العادي (زي الأسيتون) هو 1715."
+            },
+            {
+                q: "What is the effect of CONJUGATION (e.g., placing C=C next to C=O) on the C=O frequency?",
+                opts: ["It increases the frequency to ~1750", "It decreases the frequency to ~1680", "It has no effect", "It makes the peak broad like OH"],
+                correct: 1,
+                exp: "الرنين (Conjugation) يسحب الإلكترونات ويقلل من قوة الرابطة المزدوجة للـ C=O (يطولها)، مما يؤدي لتقليل التردد."
+            },
+            {
+                q: "Comparing Cyclohexanone (6-membered) and Cyclopentanone (5-membered), which has a HIGHER C=O frequency?",
+                opts: ["Cyclohexanone (1715)", "Cyclopentanone (~1750)", "They are identical", "Cannot be determined"],
+                correct: 1,
+                exp: "كلما صغرت الحلقة زاد الضغط (Ring Strain)، مما يؤدي لزيادة قوة الرابطة C=O وبالتالي يرتفع التردد."
+            },
+            {
+                q: "Which functional group has a C=O stretch at an unusually HIGH frequency (~1800 cm-1)?",
+                opts: ["Amide", "Ketone", "Acid Halide (e.g., R-CO-Cl)", "Carboxylic Acid"],
+                correct: 2,
+                exp: "الهالوجين (مثل Cl أو F) يسحب الإلكترونات بقوة (Inductive effect)، مما يقصر رابطة C=O ويزيد قوتها وترددها لتصل لـ 1800 أو أعلى."
+            },
+            {
+                q: "How does INTRAMOLECULAR H-bonding behave upon DILUTION compared to Intermolecular?",
+                opts: ["Both break upon dilution.", "Intramolecular breaks, Intermolecular remains.", "Intramolecular is independent of dilution, Intermolecular breaks.", "Neither is affected by dilution."],
+                correct: 2,
+                exp: "الروابط الداخلية (جوا نفس الجزيء) لا تتأثر بالتخفيف إطلاقاً. أما الخارجية (بين جزيئين) فتتكسر عند التخفيف ويرتفع ترددها."
+            },
+            
+            // --- Part 3: Differentiation ---
+            {
+                q: "To differentiate between Cis and Trans disubstituted alkenes using IR:",
+                opts: ["Cis is around 960, Trans is 690", "Trans is around 960, Cis is 690", "Cis is 1640, Trans is 1715", "Trans does not absorb, Cis absorbs at 3000"],
+                correct: 1,
+                exp: "في منطقة الانحناء (Bending)، أيزومر الـ Trans يظهر عند تردد أعلى (960) مقارنة بالـ Cis (690)."
+            },
+            {
+                q: "To identify a Para-disubstituted benzene ring, look for a peak:",
+                opts: ["Below 700 cm-1", "Between 730-770 cm-1", "Greater than 800 cm-1", "At exactly 1500 cm-1"],
+                correct: 2,
+                exp: "نوع الاستبدال في حلقة البنزين يظهر في منطقة البصمة. الـ Para دائماً يكون الأكبر (أعلى من 800)."
+            },
+            {
+                q: "You have an ALKYNE. How do you know if it is a TERMINAL alkyne (has ≡C-H)?",
+                opts: ["Presence of a sharp peak at 3300 cm-1", "Presence of a peak at 2150 cm-1 only", "Presence of a broad peak at 3500 cm-1", "Absence of any peak above 3000 cm-1"],
+                correct: 0,
+                exp: "الألكاين الطرفي مميز جداً بوجود هيدروجينة (sp C-H) التي تظهر كقمة حادة كالإبرة عند 3300."
+            },
+            {
+                q: "You are analyzing an ALKANE. Where will its C-H stretching band appear?",
+                opts: ["Exactly 3300 cm-1", "Between 3000 - 3200 cm-1", "Between 2800 - 3000 cm-1 (below 3000)", "Around 1700 cm-1"],
+                correct: 2,
+                exp: "الـ C-H المشبعة (sp3) تظهر دائماً تحت خط الـ 3000 بقليل. (أما غير المشبعة sp2 فتظهر فوق 3000)."
+            },
+            {
+                q: "Why does an Amide (R-CO-NH2) have a LOWER C=O frequency (~1650) than a regular ketone?",
+                opts: ["Due to ring strain", "Due to strong Inductive withdrawal by Nitrogen", "Due to Resonance and H-bonding", "Nitrogen is lighter than Oxygen"],
+                correct: 2,
+                exp: "الأميدات تتأثر بعاملين يخفضان التردد: الرنين مع النيتروجين (سيطول الرابطة) والروابط الهيدروجينية القوية."
+            },
+
+            // --- Part 4: Mini-Charts (Visual Interpretation) ---
+            {
+                q: "Look at the chart below. Which compound is this?",
+                chart: [{at: 1715, type: 'sharp'}, {at: 2900, type: 'medium'}],
+                opts: ["Acetone (Aliphatic Ketone)", "Phenol (Alcohol)", "1-Hexyne (Alkyne)", "Hexane (Alkane)"],
+                correct: 0,
+                exp: "الشارت به قمة C=O قوية عند 1715، وقمم C-H تحت 3000. لا يوجد OH ولا NH. إذن هو كيتون."
+            },
+            {
+                q: "Analyze this spectrum carefully:",
+                chart: [{at: 1710, type: 'sharp'}, {at: 2900, type: 'broad', special: 'carboxylic'}],
+                opts: ["Acetone", "Butanoic Acid", "Hexanol", "Toluene"],
+                correct: 1,
+                exp: "ظهور قمة 'البطن الحامل' العريضة جداً من 2500 لـ 3200 مع قمة C=O عند 1710 يؤكد أنه حمض كربوكسيلي (Butanoic Acid)."
+            },
+            {
+                q: "Identify the functional group from this spectrum:",
+                chart: [{at: 3400, type: 'sharp'}, {at: 3300, type: 'sharp'}],
+                opts: ["Secondary Amine (-NH)", "Carboxylic Acid", "Primary Amine (-NH2)", "Alcohol (-OH)"],
+                correct: 2,
+                exp: "وجود 'قرنين' أو قمتين حادتين في منطقة 3300-3500 هو بصمة الأمين الأولي (-NH2)."
+            },
+            {
+                q: "Which compound matches this spectrum?",
+                chart: [{at: 3350, type: 'broad'}, {at: 2950, type: 'medium'}],
+                opts: ["Cyclohexanol", "Cyclohexanone", "Benzene", "Hexanenitrile"],
+                correct: 0,
+                exp: "قمة عريضة ناعمة (اللسان) عند 3350 تدل على وجود مجموعة (OH) كحولية، مع غياب قمة الـ C=O عند 1700."
+            },
+            {
+                q: "What is the key feature in this spectrum?",
+                chart: [{at: 2250, type: 'sharp'}, {at: 2900, type: 'medium'}],
+                opts: ["C=O group", "C≡C alkyne", "C≡N Nitrile", "NO2 group"],
+                correct: 2,
+                exp: "قمة قوية في المنطقة الخالية عند 2250 تدل على مجموعة الـ Nitrile (C≡N). (الألكاين C≡C يكون أضعف وعند 2150)."
+            },
+            {
+                q: "Based on the peaks, which aromatic compound is this?",
+                chart: [{at: 3050, type: 'medium'}, {at: 1550, type: 'sharp'}, {at: 1350, type: 'sharp'}],
+                opts: ["Nitrobenzene", "Toluene", "Phenol", "Aniline"],
+                correct: 0,
+                exp: "ظهور القمتين 'السيفين' عند 1550 و 1350 هو الدليل القاطع على وجود مجموعة النيترو (NO2)."
+            },
+            {
+                q: "Match the spectrum to the compound:",
+                chart: [{at: 3300, type: 'sharp', deep: true}, {at: 2150, type: 'medium'}, {at: 2900, type: 'medium'}],
+                opts: ["1-Hexyne (Terminal Alkyne)", "2-Hexyne (Internal Alkyne)", "Hexene", "Hexane"],
+                correct: 0,
+                exp: "قمة الإبرة الحادة عند 3300 (sp C-H) مع قمة الرابطة الثلاثية عند 2150 تدل على ألكاين طرفي (Terminal)."
+            },
+            {
+                q: "Examine this spectrum. Notice the C=O position:",
+                chart: [{at: 1750, type: 'sharp'}, {at: 2900, type: 'medium'}],
+                opts: ["Regular aliphatic ketone", "Conjugated ketone", "Cyclopentanone (5-membered ring)", "Amide"],
+                correct: 2,
+                exp: "الـ C=O هنا عند رقم مرتفع (1750). الكيتون العادي 1715. هذا الارتفاع ناتج عن ضغط الحلقة الخماسية (Ring Strain)."
+            },
+            {
+                q: "Identify this compound:",
+                chart: [{at: 1690, type: 'sharp'}, {at: 3050, type: 'medium'}],
+                opts: ["Acetophenone (Conjugated Ketone)", "Acetone", "Cyclopentanone", "Hexanal"],
+                correct: 0,
+                exp: "الـ C=O طالعة عند رقم منخفض (1690) ووجود C-H فوق 3000 (أروماتيك). هذا الانخفاض بسبب الرنين (Conjugation) مع حلقة البنزين."
+            },
+            {
+                q: "Identify this 'boring' spectrum:",
+                chart: [{at: 2950, type: 'medium'}, {at: 1450, type: 'medium'}],
+                opts: ["Hexanol", "Hexanone", "Hexene", "Hexane (Alkane)"],
+                correct: 3,
+                exp: "شارت فارغ تقريباً! لا OH، لا C=O، وكل الـ C-H تحت الـ 3000. هذا مجرد ألكان عادي (Hexane)."
+            }
+        ];
+
+        let currentRoundQs = [];
+        let currentIndex = 0;
+        let answered = false;
+
+        function openScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
+
+        function initQuiz() {
+            // Shuffle all questions for round 1
+            currentRoundQs = JSON.parse(JSON.stringify(allQuestions)).sort(() => Math.random() - 0.5);
+            currentIndex = 0;
+            openScreen('quiz-screen');
+            loadQuestion();
+        }
+
+        function renderChart(peaks) {
+            if (!peaks) return '';
+            let html = `
+            <div class="ir-chart">
+                <div class="ir-axis">
+                    <span style="padding-left:5px;">4000</span>
+                    <span>3000</span>
+                    <span>2000</span>
+                    <span>1500</span>
+                    <span style="padding-right:5px;">500</span>
+                </div>
+                <div class="ir-baseline"></div>`;
+            
+            peaks.forEach(p => {
+                // Calculate percentage from left (4000 is 0%, 500 is 100%)
+                // Range = 3500
+                let leftPercent = ((4000 - p.at) / 3500) * 100;
+                let cssClass = 'peak ' + p.type;
+                if (p.special === 'carboxylic') {
+                    // special styling for carboxylic belly
+                    html += `<div class="peak broad" style="left: ${leftPercent}%; width: 25%; margin-left: -12.5%; height: 75%; background: rgba(231, 76, 60, 0.4); border-color: #e74c3c; border-radius: 0 0 60% 30%;"></div>`;
+                } else if(p.deep) {
+                    html += `<div class="${cssClass}" style="left: ${leftPercent}%; height: 95%;"></div>`;
+                } else {
+                    html += `<div class="${cssClass}" style="left: ${leftPercent}%;"></div>`;
+                }
+            });
+            html += `</div>`;
+            return html;
+        }
+
+        function loadQuestion() {
+            answered = false;
+            let qData = currentRoundQs[currentIndex];
+            
+            // Progress Update
+            document.getElementById('counter').innerText = `${currentIndex + 1} / ${currentRoundQs.length}`;
+            document.getElementById('bar').style.width = `${((currentIndex + 1) / currentRoundQs.length) * 100}%`;
+            
+            // Text & Chart
+            document.getElementById('q-txt').innerHTML = `${currentIndex + 1}. ${qData.q}`;
+            document.getElementById('chart-area').innerHTML = qData.chart ? renderChart(qData.chart) : '';
+            
+            // Options (Shuffled)
+            let optsBox = document.getElementById('opt-box');
+            optsBox.innerHTML = '';
+            
+            // Create array of objects to keep track of original correct index
+            let shuffledOpts = qData.opts.map((opt, i) => ({text: opt, originalIndex: i}))
+                                       .sort(() => Math.random() - 0.5);
+            
+            shuffledOpts.forEach((obj, newIndex) => {
+                let btn = document.createElement('div');
+                btn.className = 'option-btn active-click';
+                btn.innerText = obj.text;
+                btn.onclick = () => selectOption(btn, obj.originalIndex, qData.correct, qData.exp);
+                optsBox.appendChild(btn);
+            });
+
+            document.getElementById('exp-box').style.display = 'none';
+            document.getElementById('next-btn').style.display = 'none';
+        }
+
+        function selectOption(selectedBtn, chosenIdx, correctIdx, expTxt) {
+            if (answered) return;
+            answered = true;
+
+            let allBtns = document.querySelectorAll('.option-btn');
+            allBtns.forEach(btn => {
+                btn.classList.remove('active-click');
+                btn.classList.add('locked');
+            });
+
+            // Check if correct
+            if (chosenIdx === correctIdx) {
+                selectedBtn.classList.add('correct');
+                currentRoundQs[currentIndex].passed = true; // Mark as passed
+            } else {
+                selectedBtn.classList.add('wrong');
+                currentRoundQs[currentIndex].passed = false; // Needs repeat
+                // Find and highlight the correct one
+                allBtns.forEach(btn => {
+                    if (btn.innerText === currentRoundQs[currentIndex].opts[correctIdx]) {
+                        btn.classList.add('correct');
+                    }
+                });
+            }
+
+            // Show explanation
+            document.getElementById('exp-txt').innerText = expTxt;
+            document.getElementById('exp-box').style.display = 'block';
+            document.getElementById('next-btn').style.display = 'block';
+        }
+
+        function goNext() {
+            if (currentIndex < currentRoundQs.length - 1) {
+                currentIndex++;
+                loadQuestion();
+            } else {
+                evaluateRound();
+            }
+        }
+
+        function evaluateRound() {
+            // Collect failed questions
+            let failedQs = currentRoundQs.filter(q => q.passed === false);
+            
+            if (failedQs.length > 0) {
+                // Round 2 (or 3, etc) starts
+                currentRoundQs = failedQs.sort(() => Math.random() - 0.5);
+                currentIndex = 0;
+                let roundNum = parseInt(document.getElementById('round-info').innerText.replace(/\D/g,'')) + 1;
+                document.getElementById('round-info').innerText = `الجولة (${roundNum}) - أسئلة الإعادة`;
+                loadQuestion();
+            } else {
+                // Win!
+                document.getElementById('win-overlay').style.display = 'flex';
+                confetti({ particleCount: 300, spread: 100, origin: { y: 0.6 } });
+            }
+        }
+    </script>
+</body>
+</html>
